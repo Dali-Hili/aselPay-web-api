@@ -1,7 +1,7 @@
 var axios = require("axios");
 const https = require("https");
 const { validationResult } = require("express-validator");
-
+const mongoose = require("mongoose");
 const MVNO = require("../models/MVNO");
 const Bundle = require("../models/Bundle");
 const Retailer = require("../models/Retailer");
@@ -203,6 +203,9 @@ exports.assignBundle = async (req, res) => {
   }
 };
 
+// =========== ADMIN ===========
+
+// this will get today's topUpBundle amount for the ADMIN
 exports.getCurrentDayTopUpBundleAmount = async (req, res) => {
   // Format the date
   const currentDate = new Date().toISOString().split("T")[0];
@@ -228,6 +231,197 @@ exports.getCurrentDayTopUpBundleAmount = async (req, res) => {
       },
       { reloadAmount: 0, reloadCount: 0 }
     );
+
+    console.log("Reload Amount:", reloadAmount);
+    console.log("Reload Count:", reloadCount);
+
+    res.status(200).json({
+      totalReloadsAmount: reloadAmount,
+      totalReloadsNumber: reloadCount,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+// this will get this month topUpBundle amount for the ADMIN
+exports.getCurrentMonthTopUpBundleAmount = async (req, res) => {
+   // Get the current month and year
+   const currentDate = new Date();
+   const currentMonth = currentDate.getMonth() - 1;
+   const currentYear = currentDate.getFullYear();
+ 
+   try {
+     // Calculate the start and end dates of the current month
+     const startOfMonth = new Date(currentYear, currentMonth, 1);
+     const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+ 
+     // Aggregate the top-up bundles for the current month
+     const result = await TopupBundle.aggregate([
+       {
+         $match: {
+           createdAt: {
+             $gt: startOfMonth,
+             $lte: endOfMonth,
+           },
+         },
+       },
+       {
+         $lookup: {
+           from: "bundles",
+           localField: "bundle",
+           foreignField: "_id",
+           as: "bundle",
+         },
+       },
+       {
+         $unwind: "$bundle",
+       },
+       {
+         $group: {
+           _id: null,
+           reloadAmount: { $sum: "$bundle.price.amount" },
+           reloadCount: { $sum: 1 },
+         },
+       },
+       {
+         $project: {
+           _id: 0,
+           reloadAmount: 1,
+           reloadCount: 1,
+         },
+       },
+     ]);
+ console.log(result);
+     // Extract the reload amount and count from the aggregation result
+     const { reloadAmount, reloadCount } = result[0];
+ 
+     console.log("Reload Amount:", reloadAmount);
+     console.log("Reload Count:", reloadCount);
+ 
+     res.status(200).json({
+       totalReloadsAmount: reloadAmount,
+       totalReloadsNumber: reloadCount,
+     });
+   } catch (error) {
+     console.log(error);
+     res.status(500).json({ error: "Internal server error" });
+   }
+};
+
+// =========== RETAILER ===========
+
+// this will get today's topUpBundle amount for the RETAILER
+exports.getCurrentDayTopUpBundleAmountRetailer = async (req, res) => {
+  // Format the date
+  const currentDate = new Date().toISOString().split("T")[0];
+
+  try {
+    // Aggregate the top-up bundles for the current date and retailer
+    const result = await TopupBundle.aggregate([
+      {
+        $match: {
+          retailer: mongoose.Types.ObjectId(req.body.retailerId),
+          createdAt: {
+            $gte: new Date(`${currentDate}T00:00:00.000Z`),
+            $lte: new Date(`${currentDate}T23:59:59.999Z`),
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "bundles",
+          localField: "bundle",
+          foreignField: "_id",
+          as: "bundle",
+        },
+      },
+      {
+        $unwind: "$bundle",
+      },
+      {
+        $group: {
+          _id: null,
+          reloadAmount: { $sum: "$bundle.price.amount" },
+          reloadCount: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          reloadAmount: 1,
+          reloadCount: 1,
+        },
+      },
+    ]);
+
+    // Extract the reload amount and count from the aggregation result
+    const { reloadAmount, reloadCount } = result[0];
+
+    console.log("Reload Amount:", reloadAmount);
+    console.log("Reload Count:", reloadCount);
+
+    res.status(200).json({
+      totalReloadsAmount: reloadAmount,
+      totalReloadsNumber: reloadCount,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// this will get this month topUpBundle amount for the RETAILER
+exports.getCurrentMonthTopUpBundleAmountRetailer = async (req, res) => {
+  // Get the current month and year
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() - 1;
+  const currentYear = currentDate.getFullYear();
+
+  try {
+    // Calculate the start and end dates of the current month
+    const startOfMonth = new Date(currentYear, currentMonth, 1);
+    const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+    // Aggregate the top-up bundles for the current month
+    const result = await TopupBundle.aggregate([
+      {
+        $match: {
+          retailer: mongoose.Types.ObjectId(req.body.retailerId),
+          createdAt: {
+            $gt: startOfMonth,
+            $lte: endOfMonth,
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "bundles",
+          localField: "bundle",
+          foreignField: "_id",
+          as: "bundle",
+        },
+      },
+      {
+        $unwind: "$bundle",
+      },
+      {
+        $group: {
+          _id: null,
+          reloadAmount: { $sum: "$bundle.price.amount" },
+          reloadCount: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          reloadAmount: 1,
+          reloadCount: 1,
+        },
+      },
+    ]);
+    // Extract the reload amount and count from the aggregation result
+    const { reloadAmount, reloadCount } = result[0];
 
     console.log("Reload Amount:", reloadAmount);
     console.log("Reload Count:", reloadCount);

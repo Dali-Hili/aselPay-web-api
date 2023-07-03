@@ -1,7 +1,7 @@
 var axios = require("axios");
 const https = require("https");
 const { validationResult } = require("express-validator");
-
+const mongoose = require("mongoose");
 const MVNO = require("../models/MVNO");
 const Bundle = require("../models/Bundle");
 const Retailer = require("../models/Retailer");
@@ -254,6 +254,8 @@ exports.reloadV2 = async (req, res) => {
   }
 };
 
+// =========== ADMIN ===========
+
 exports.getCurrentDayTopUpLightAmount = async (req, res) => {
   const currentDate = new Date().toISOString().split("T")[0];
   try {
@@ -261,6 +263,112 @@ exports.getCurrentDayTopUpLightAmount = async (req, res) => {
       createdAt: {
         $gte: new Date(`${currentDate}T00:00:00.000Z`),
         $lte: new Date(`${currentDate}T23:59:59.999Z`),
+      },
+    });
+
+    const { reloadAmount, reloadCount } = topupLight.reduce(
+      (accumulated, reload) => {
+        const amount = reload.reloadAmount.amount;
+        return {
+          reloadAmount: accumulated.reloadAmount + amount,
+          reloadCount: accumulated.reloadCount + 1,
+        };
+      },
+      { reloadAmount: 0, reloadCount: 0 }
+    );
+
+    res.status(200).json({
+      totalReloadsAmount: reloadAmount,
+      totalReloadsNumber: reloadCount,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getCurrentMonthTopUpLightAmount = async (req, res) => {
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const startOfMonth = new Date(currentYear, currentMonth, 1);
+  const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+  try {
+    const topupLight = await TopupLight.find({
+      createdAt: {
+        $gte: startOfMonth,
+        $lte: endOfMonth,
+      },
+    });
+
+    const { reloadAmount, reloadCount } = topupLight.reduce(
+      (accumulated, reload) => {
+        const amount = reload.reloadAmount.amount;
+        return {
+          reloadAmount: accumulated.reloadAmount + amount,
+          reloadCount: accumulated.reloadCount + 1,
+        };
+      },
+      { reloadAmount: 0, reloadCount: 0 }
+    );
+
+    res.status(200).json({
+      totalReloadsAmount: reloadAmount,
+      totalReloadsNumber: reloadCount,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+// =========== RETAILER ===========
+
+exports.getCurrentDayTopUpLightAmountRetailer = async (req, res) => {
+  const currentDate = new Date().toISOString().split("T")[0];
+  try {
+    const topupLight = await TopupLight.find({
+      retailer: mongoose.Types.ObjectId(req.body.retailerId),
+      createdAt: {
+        $gte: new Date(`${currentDate}T00:00:00.000Z`),
+        $lte: new Date(`${currentDate}T23:59:59.999Z`),
+      },
+    });
+
+    const { reloadAmount, reloadCount } = topupLight.reduce(
+      (accumulated, reload) => {
+        const amount = reload.reloadAmount.amount;
+        return {
+          reloadAmount: accumulated.reloadAmount + amount,
+          reloadCount: accumulated.reloadCount + 1,
+        };
+      },
+      { reloadAmount: 0, reloadCount: 0 }
+    );
+
+    res.status(200).json({
+      totalReloadsAmount: reloadAmount,
+      totalReloadsNumber: reloadCount,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.getCurrentMonthTopUpLightAmountRetailer = async (req, res) => {
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const startOfMonth = new Date(currentYear, currentMonth, 1);
+  const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+  try {
+    const topupLight = await TopupLight.find({
+      retailer: mongoose.Types.ObjectId(req.body.retailerId),
+      createdAt: {
+        $gte: startOfMonth,
+        $lte: endOfMonth,
       },
     });
 

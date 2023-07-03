@@ -15,9 +15,29 @@ router.post(
   validTopupBundle,
   topupBundleController.assignBundle
 );
+
+// =========== ADMIN ===========
+
 router.post(
   "/reloadAmount/currentDay",
   topupBundleController.getCurrentDayTopUpBundleAmount
+);
+
+router.post(
+  "/reloadAmount/currentMonth",
+  topupBundleController.getCurrentMonthTopUpBundleAmount
+);
+
+// =========== RETAILER ===========
+
+router.post(
+  "/reloadAmount/currentDay/retailer",
+  topupBundleController.getCurrentDayTopUpBundleAmountRetailer
+);
+
+router.post(
+  "/reloadAmount/currentMonth/retailer",
+  topupBundleController.getCurrentMonthTopUpBundleAmountRetailer
 );
 
 module.exports = router;

@@ -655,8 +655,6 @@ exports.getTransactionsbyWholesaler =  async (req, res) => {
     }
 }
 
-
-
 exports.getTransactionsbySuperAdmin =  async (req, res) => {
     try{
         let user_id = req.user.id;
@@ -788,3 +786,72 @@ exports.getTransactionsbySubWholesaler =  async (req, res) => {
         res.status(500).json({ msg: "Une erreur s'est produite!" });
     }
 }
+
+
+// ============== ADMIN ==============
+
+exports.getAdminTransactions = async (req, res) => {
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      errors = errors.array().map((e) => e.msg);
+      return res.status(400).json({ errors });
+    }
+  
+    try {
+      const transactions = await Transaction.aggregate([
+        {
+          $match: {
+            level: 1,
+          },
+        },
+        {
+          $lookup: {
+            from: "wholesalers", // Replace "wholesalers" with the actual name of the collection for wholesalers
+            localField: "recipient",
+            foreignField: "_id",
+            as: "wholesaler",
+          },
+        },
+        {
+          $lookup: {
+            from: "superadmins", // Replace "superadmins" with the actual name of the collection for superadmins
+            localField: "recipient",
+            foreignField: "_id",
+            as: "superadmin",
+          },
+        },
+        {
+          $addFields: {
+            recipientDetails: {
+              $cond: {
+                if: { $gt: [{ $size: "$wholesaler" }, 0] },
+                then: { $arrayElemAt: ["$wholesaler", 0] },
+                else: { $cond: { if: { $gt: [{ $size: "$superadmin" }, 0] }, then: { $arrayElemAt: ["$superadmin", 0] }, else: "$$REMOVE" } },
+              },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            reloadAmount: { $sum: "$transactionAmount.amount" },
+            reloadCount: { $sum: 1 },
+            transactions: { $push: "$$ROOT" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            reloadAmount: 1,
+            reloadCount: 1,
+            transactions: 1,
+          },
+        },
+      ]);
+  
+      res.send(transactions[0]);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };

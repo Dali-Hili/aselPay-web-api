@@ -21,9 +21,27 @@ router.post(
   grantAccess(["retailer"]),
   topupLightController.reloadV2
 );
+
+// =========== ADMIN ===========
+
 router.post(
   "/reloadAmount/currentDay",
   topupLightController.getCurrentDayTopUpLightAmount
 );
 
+router.post(
+  "/reloadAmount/currentMonth",
+  topupLightController.getCurrentMonthTopUpLightAmount
+);
+
+// =========== RETAILER ===========
+router.post(
+  "/reloadAmount/currentDay/retailer",
+  topupLightController.getCurrentDayTopUpLightAmountRetailer
+);
+
+router.post(
+  "/reloadAmount/currentMonth/retailer",
+  topupLightController.getCurrentMonthTopUpLightAmountRetailer
+);
 module.exports = router;

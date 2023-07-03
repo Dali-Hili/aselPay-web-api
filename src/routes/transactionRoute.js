@@ -23,8 +23,9 @@ router.post('/superAdd', auth, grantAccess(['SuperAdmin']), transactionControlle
 router.post('/subWholesaler', auth, grantAccess(['sub-wholesaler']), transactionController.addTransactionLevel4);
 
 //@route: POST transaction/history
+
 //desc: gets all transactions
-router.get('/history', auth, grantAccess(['admin','wholesaler','SuperAdmin']), switchRoutebyRole('admin'), transactionController.getAllTransactions);
+router.get('/history',  transactionController.getAllTransactions);
 
 //@route: POST transaction/history
 //desc: gets all transactions of given wholesaler
@@ -38,5 +39,9 @@ router.get('/superAdmin/history', auth, grantAccess(['SuperAdmin']), transaction
 //desc: gets all transactions of subwholesaler
 router.get('/subWholesaler/history', auth, grantAccess(['sub-wholesaler']), transactionController.getTransactionsbySubWholesaler);
 
+
+// ============== ADMIN ==============
+router.post('/admin',  transactionController.getAdminTransactions);
+ 
 
 module.exports = router;
