@@ -42,6 +42,8 @@ router.get('/subWholesaler/history', auth, grantAccess(['sub-wholesaler']), tran
 
 // ============== ADMIN ==============
 router.post('/admin',  transactionController.getAdminTransactions);
- 
+
+router.post('/admin/detailed',  transactionController.getAdminTransactionsDetailed);
+
 
 module.exports = router;

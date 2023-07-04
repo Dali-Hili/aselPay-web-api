@@ -842,17 +842,129 @@ exports.getAdminTransactions = async (req, res) => {
                     select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
                 }
             })
-            transactionsl1 = transactionsl1.filter((elem) => { return elem.recipient !== null })
-            transactionsL1 = transactionsL1.filter((elem) => { return elem.recipient !== null })
-    
-            let transactions = transactionsL1.concat(transactionsl1)
-            transactions.sort(function (a, b) {
-                return new Date(b.createdAt) - new Date(a.createdAt);
-            });
-    
-            res.send(transactions);
+        transactionsl1 = transactionsl1.filter((elem) => { return elem.recipient !== null })
+        transactionsL1 = transactionsL1.filter((elem) => { return elem.recipient !== null })
+
+        let transactions = transactionsL1.concat(transactionsl1)
+        transactions.sort(function (a, b) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+        res.send(transactions);
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getAdminTransactionsDetailed = async (req, res) => {
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        errors = errors.array().map((e) => e.msg);
+        return res.status(400).json({ errors });
+    }
+
+    try {
+        // Calculate the start and end dates of the current month
+        const startOfMonth = req.body.startDate
+        const endOfMonth = req.body.endDate
+        // Retrieve all transactions with level 1
+        let transactionsL1 = await Transaction
+            .find({
+                level: 1, createdAt: {
+                    $gt: startOfMonth,
+                    $lte: endOfMonth,
+                },
+            })
+            .populate({
+                path: 'sender',
+                model: 'Admin',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            })
+            .populate({
+                path: 'recipient',
+                model: 'Wholesaler',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            })
+        let transactionsl1 = await Transaction
+            .find({
+                level: 1, createdAt: {
+                    $gt: startOfMonth,
+                    $lte: endOfMonth,
+                },
+            })
+            .populate({
+                path: 'sender',
+                model: 'Admin',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            })
+            .populate({
+                path: 'recipient',
+                model: 'SuperAdmin',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            })
+        transactionsl1 = transactionsl1.filter((elem) => { return elem.recipient !== null })
+        transactionsL1 = transactionsL1.filter((elem) => { return elem.recipient !== null })
+
+        let transactions = transactionsL1.concat(transactionsl1)
+        transactions.sort(function (a, b) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+        // Calculate the total amount of transactions
+        const totalTransactions = transactions.reduce((total, transaction) => {
+            return total + transaction.transactionAmount.amount;
+        }, 0);
+
+        // Calculate the total amount of transactions for the "wholesaler" role
+        const totalWholesalerTransactions = transactions.reduce((total, transaction) => {
+            if (
+                transaction.recipient &&
+                transaction.recipient.user.role === 'wholesaler'
+            ) {
+                return total + transaction.transactionAmount.amount;
+            }
+            return total;
+        }, 0);
+
+        // Calculate the total amount of transactions for the "superadmin" role
+        const totalSuperAdminTransactions = transactions.reduce((total, transaction) => {
+            if (
+                transaction.recipient &&
+                transaction.recipient.user.role === 'SuperAdmin'
+            ) {
+                return total + transaction.transactionAmount.amount;
+            }
+            return total;
+        }, 0);
+
+        res.send({
+            totalTransactions,
+            totalWholesalerTransactions,
+            totalSuperAdminTransactions,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
