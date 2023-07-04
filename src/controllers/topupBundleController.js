@@ -248,7 +248,7 @@ exports.getCurrentDayTopUpBundleAmount = async (req, res) => {
 exports.getCurrentMonthTopUpBundleAmount = async (req, res) => {
    // Get the current month and year
    const currentDate = new Date();
-   const currentMonth = currentDate.getMonth() - 1;
+   const currentMonth = currentDate.getMonth();
    const currentYear = currentDate.getFullYear();
  
    try {
@@ -277,6 +277,7 @@ exports.getCurrentMonthTopUpBundleAmount = async (req, res) => {
        {
          $unwind: "$bundle",
        },
+       
        {
          $group: {
            _id: null,
@@ -284,13 +285,7 @@ exports.getCurrentMonthTopUpBundleAmount = async (req, res) => {
            reloadCount: { $sum: 1 },
          },
        },
-       {
-         $project: {
-           _id: 0,
-           reloadAmount: 1,
-           reloadCount: 1,
-         },
-       },
+       
      ]);
  console.log(result);
      // Extract the reload amount and count from the aggregation result
