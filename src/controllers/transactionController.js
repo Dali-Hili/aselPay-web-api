@@ -968,3 +968,148 @@ exports.getAdminTransactionsDetailed = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+exports.getAdminTopTransactions = async (req, res) => {
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      errors = errors.array().map((e) => e.msg);
+      return res.status(400).json({ errors });
+    }
+  
+    try {
+      // Calculate the start and end dates of the specified period
+      const startOfMonth = req.body.startDate;
+      const endOfMonth = req.body.endDate;
+  
+      // Retrieve all transactions with level 1 within the specified period
+      let transactionsL1 = await Transaction
+      .find({
+          level: 1, createdAt: {
+              $gt: startOfMonth,
+              $lte: endOfMonth,
+          },
+      })
+      .populate({
+          path: 'sender',
+          model: 'Admin',
+          select: { 'user': 1 },
+          populate: {
+              path: 'user',
+              model: 'User',
+              select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+          }
+      })
+      .populate({
+          path: 'recipient',
+          model: 'Wholesaler',
+          select: { 'user': 1 },
+          populate: {
+              path: 'user',
+              model: 'User',
+              select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+          }
+      })
+  let transactionsl1 = await Transaction
+      .find({
+          level: 1, createdAt: {
+              $gt: startOfMonth,
+              $lte: endOfMonth,
+          },
+      })
+      .populate({
+          path: 'sender',
+          model: 'Admin',
+          select: { 'user': 1 },
+          populate: {
+              path: 'user',
+              model: 'User',
+              select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+          }
+      })
+      .populate({
+          path: 'recipient',
+          model: 'SuperAdmin',
+          select: { 'user': 1 },
+          populate: {
+              path: 'user',
+              model: 'User',
+              select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+          }
+      })
+  transactionsl1 = transactionsl1.filter((elem) => { return elem.recipient !== null })
+  transactionsL1 = transactionsL1.filter((elem) => { return elem.recipient !== null })
+
+  let transactions = transactionsL1.concat(transactionsl1)
+  transactions.sort(function (a, b) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+  
+       // Calculate the total amount of transactions
+    const totalTransactions = transactions.reduce((total, transaction) => {
+        return total + transaction.transactionAmount.amount;
+      }, 0);
+  
+      // Filter and group transactions by recipient role (wholesaler or superadmin)
+      const transactionsByRole = transactions.reduce((acc, transaction) => {
+        const recipientRole = transaction.recipient.user.role;
+        if (!acc[recipientRole]) {
+          acc[recipientRole] = { transactions: [], totalAmount: 0 };
+        }
+        acc[recipientRole].transactions.push(transaction);
+        acc[recipientRole].totalAmount += transaction.transactionAmount.amount;
+        return acc;
+      }, {});
+  
+      // Sort transactions by transaction amount in descending order
+const sortedTransactions = transactions.slice().sort((a, b) => {
+    return b.transactionAmount.amount - a.transactionAmount.amount;
+  });
+  
+  // Calculate the total transactions for each wholesaler and superadmin
+  const transactionsByRecipient = sortedTransactions.reduce((acc, transaction) => {
+    const recipientId = transaction.recipient._id.toString();
+    if (!acc[recipientId]) {
+      acc[recipientId] = {
+        recipient: transaction.recipient,
+        totalAmount: 0,
+      };
+    }
+    acc[recipientId].totalAmount += transaction.transactionAmount.amount;
+    return acc;
+  }, {});
+  
+  // Sort the transactions by total amount in descending order
+  const sortedTransactionsByTotalAmount = Object.values(transactionsByRecipient).sort((a, b) => {
+    return b.totalAmount - a.totalAmount;
+  });
+  
+  // Get the top 3 wholesalers with the highest total transaction amounts
+  const topWholesalers = sortedTransactionsByTotalAmount
+    .filter(transaction => transaction.recipient.user.role === 'wholesaler')
+    .slice(0, 3)
+    .map(transaction => {
+      const { _id, firstName, lastName, role } = transaction.recipient.user;
+      return { _id, firstName, lastName, amount: transaction.totalAmount, role };
+    });
+  
+  // Get the top 3 superadmins with the highest total transaction amounts
+  const topSuperAdmins = sortedTransactionsByTotalAmount
+    .filter(transaction => transaction.recipient.user.role === 'SuperAdmin')
+    .slice(0, 3)
+    .map(transaction => {
+      const { _id, firstName, lastName, role } = transaction.recipient.user;
+      return { _id, firstName, lastName, amount: transaction.totalAmount, role };
+    });
+  
+      res.send({
+        totalTransactions,
+        totalWholesalerTransactions: transactionsByRole.wholesaler?.totalAmount || 0,
+        totalSuperAdminTransactions: transactionsByRole.SuperAdmin?.totalAmount || 0,
+        topWholesalers,
+        topSuperAdmins,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  };
