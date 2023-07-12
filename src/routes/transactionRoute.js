@@ -47,5 +47,7 @@ router.post('/admin/detailed',  transactionController.getAdminTransactionsDetail
 
 router.post('/admin/topTransactions',  transactionController.getAdminTopTransactions);
 
+router.post('/admin/getSpecificAdminTransactions',  transactionController.getSpecificAdminTransactions);
+
 
 module.exports = router;

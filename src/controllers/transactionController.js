@@ -47,6 +47,7 @@ exports.addTransactionLevel1 = async (req, res) => {
             res.status(400).json({ msg: "Vous ne pouvez pas effectuer un paiement de/à un compte inactif" });
             return;
         }
+        console.log(recipient.balance.amount + transactionAmount.amount,parseInt(process.env.WHOLESALER_BALANCE_LIMIT),"zertr")
         //make sure the balance of the recipient won't exceed the balance limit after the transaction
         if (recipient.balance.amount + transactionAmount.amount > parseInt(process.env.WHOLESALER_BALANCE_LIMIT)) {
             res.status(400).json({
@@ -79,17 +80,19 @@ exports.addTransactionLevel1 = async (req, res) => {
         recipient.unpaid.amount += transactionAmount.amount;
         //commit changes to DB through a mongoose transaction session, 
         //if any of the changes fail to commit, the whole transaction is aborted
-        const session = await mongoose.startSession();
+        // const session = await mongoose.startSession();
         try {
-            session.startTransaction();
+            console.log("here");
+            // session.startTransaction();
 
             //save the transaction object to the DB
             await transaction.save();
             //save the updated wholesaler to the DB
             await recipient.save();
+            console.log("heree2");
 
-            await session.commitTransaction();
-            session.endSession();
+            // await session.commitTransaction();
+            // session.endSession();
             res.status(200).json({
                 msg: `Vous avez transféré ${transactionAmount.amount} ${transactionAmount.unit} au compte de ${recipient.user.firstName} ${recipient.user.lastName}`
             });
@@ -1112,4 +1115,80 @@ const sortedTransactions = transactions.slice().sort((a, b) => {
       console.log(error);
       res.status(500).json({ error: 'Internal server error' });
     }
-  };
+};
+
+exports.getSpecificAdminTransactions = async (req, res) => {
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        errors = errors.array().map((e) => e.msg);
+        return res.status(400).json({ errors });
+    }
+
+    const { sender, recipient } = req.body;
+
+    try {
+        let transactionsL1 = await Transaction
+            .find({
+                level: 1,
+                sender: sender,
+                recipient: recipient,
+            })
+            .populate({
+                path: 'sender',
+                model: 'Admin',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            })
+            .populate({
+                path: 'recipient',
+                model: 'Wholesaler',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            });
+
+        let transactionsl1 = await Transaction
+            .find({
+                level: 1,
+                sender: sender,
+                recipient: recipient,
+            })
+            .populate({
+                path: 'sender',
+                model: 'Admin',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            })
+            .populate({
+                path: 'recipient',
+                model: 'SuperAdmin',
+                select: { 'user': 1 },
+                populate: {
+                    path: 'user',
+                    model: 'User',
+                    select: { 'firstName': 1, 'lastName': 1, 'role': 1 },
+                }
+            });
+
+        let transactions = transactionsL1.concat(transactionsl1);
+        transactions = transactions.filter((elem) => elem.recipient !== null);
+        transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        transactions = transactions.slice(0, 5); // Keep only the last 5 transactions
+
+        res.send(transactions);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};

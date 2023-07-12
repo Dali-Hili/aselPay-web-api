@@ -57,6 +57,11 @@ exports.getAllWholesalers = async (req, res) => {
             select: { 'firstName': 1,'lastName':1, 'createdAt':1, 'accountStatus' : 1, "passwordExpiryDate": 1, "phoneNumber": 1,"shopName": 1},
         })
         .select(['balance',"totalTransactions","totalPayments","unpaid"]);
+        wholesalers = wholesalers.filter(wholesaler => {
+            if(wholesaler.user?.shopName !== undefined) {
+            return !wholesaler.user.shopName.startsWith('Franchise');
+            }
+        });
         res.send(wholesalers);
     }catch(error){
         console.error(error.message);
