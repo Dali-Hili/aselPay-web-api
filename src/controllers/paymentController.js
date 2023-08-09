@@ -28,6 +28,9 @@ exports.addPaymentLevel1 = async (req, res) => {
         //make sure the sender (wholesaler) exists in the DB
         let sender = await Wholesaler.findById(new mongoose.Types.ObjectId(sender_id)).populate('user');
         if(!sender){
+            sender = await SuperAdmin.findById(new mongoose.Types.ObjectId(sender_id)).populate('user');
+        }
+        if(!sender){   
             res.status(400).json({msg : "Le commercial demandé n'existe pas"});
             return;
         }
@@ -71,24 +74,17 @@ exports.addPaymentLevel1 = async (req, res) => {
         sender.unpaid.amount -= paymentAmount.amount;
         //add the payment amount to the sender's (wholesaler) total payments
         sender.totalPayments.amount += paymentAmount.amount;
-        //commit changes to DB through a transaction
-        const session = await mongoose.startSession();
         try {
-            session.startTransaction();
 
             //save the payment object to the DB
             await payment.save();
             //save the updated wholesaler to the DB
             await sender.save();
 
-            await session.commitTransaction();
-            session.endSession();
             res.status(200).json({
                 msg : `${sender.user.firstName} ${sender.user.lastName} vous a payés ce montant : ${paymentAmount.amount} ${paymentAmount.unit}`
             });
         }catch (error) {
-            await session.abortTransaction();
-            session.endSession();
             console.error(error.message);
             res.status(500).json({ msg: "Une erreur s'est produite!" });
         }

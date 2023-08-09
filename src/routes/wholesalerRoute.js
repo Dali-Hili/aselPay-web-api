@@ -26,4 +26,5 @@ router.get('/:id', auth, grantAccess(['admin']), wholesalerController.getWholesa
 //desc: returns all the retailers&subwholesalers available to the current user (Wholesaler)
 router.get('/all/children', auth,wholesalerController.getWholesalerChildren);
 
+
 module.exports = router;

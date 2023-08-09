@@ -140,3 +140,4 @@ exports.getWholesalerChildren = async (req, res) => {
         res.status(500).json({ msg: "Une erreur s'est produite!" });
     }
 }
+

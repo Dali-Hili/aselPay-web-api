@@ -44,4 +44,9 @@ router.post(
   "/reloadAmount/currentMonth/retailer",
   topupLightController.getCurrentMonthTopUpLightAmountRetailer
 );
+
+router.post(
+  "/history/retailer",
+  topupLightController.getLightHistoryRetailer
+);
 module.exports = router;

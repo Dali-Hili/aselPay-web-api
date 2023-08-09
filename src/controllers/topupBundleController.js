@@ -430,3 +430,42 @@ exports.getCurrentMonthTopUpBundleAmountRetailer = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.getBundleHistoryRetailer = async (req, res) => {
+  try {
+    let topupBundle = await TopupBundle.find({ retailer: req.body.retailerId })
+      .populate({
+        path: "retailer",
+        populate: { path: "user" },
+      })
+      .populate("MVNO")
+      .populate("bundle")
+      .select({
+        _id: 1,
+        topupType: "Bundle",
+        MSISDN: 1,
+        createdAt: 1,
+        "retailer._id": 1,
+        "retailer.user._id": 1,
+        "retailer.user.firstName": 1,
+        "retailer.user.lastName": 1,
+        "retailer.wholesaler": 1,
+        "MVNO._id": 1,
+        "MVNO.name": 1,
+        "bundle._id": 1,
+        "bundle.name": 1,
+        "bundle.price": 1,
+      })
+      .lean();
+    topupBundle.forEach((item) => {
+      item.topupType = "Bundle";
+    });
+    topupBundle.sort(function (a, b) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    res.send(topupBundle);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ msg: "Une erreur s'est produite!" });
+  }
+};

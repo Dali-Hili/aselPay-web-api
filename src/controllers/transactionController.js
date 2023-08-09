@@ -1192,3 +1192,104 @@ exports.getSpecificAdminTransactions = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 };
+
+// ============== WHOLESALER ==============
+
+exports.getMonthlyTransactionsbyWholesaler = async (req, res) => {
+    try {
+      const selectedMonth = req.body.selectedMonth; // Assuming the selected month is sent from the frontend
+      const year = new Date().getFullYear();
+  
+      const startOfMonth = new Date(year, selectedMonth - 1, 1);
+      const endOfMonth = new Date(year, selectedMonth, 0, 23, 59, 59);
+  
+      let transactionsL1 = await Transaction.find({
+        recipient: req.body.wholesalerId,
+        level: 1,
+        createdAt: {
+          $gte: startOfMonth,
+          $lte: endOfMonth
+        }
+      });
+  
+      let transactionsL2 = await Transaction.find({
+        sender: req.body.wholesalerId,
+        level: 2,
+        createdAt: {
+          $gte: startOfMonth,
+          $lte: endOfMonth
+        }
+      })
+  
+      transactionsL2 = transactionsL2.filter((elem) => elem.recipient !== null);
+  
+      let totalTransactionAmountL1 = transactionsL1.reduce((total, transaction) => {
+        return total + transaction.transactionAmount.amount;
+      }, 0);
+  
+      let totalTransactionAmountL2 = transactionsL2.reduce((total, transaction) => {
+        return total + transaction.transactionAmount.amount;
+      }, 0);
+  
+      res.json({
+        received: totalTransactionAmountL1,
+        sent: totalTransactionAmountL2
+      });
+    } catch (error) {
+      console.error(error.message);
+      res.status(500).json({ msg: "An error occurred!" });
+    }
+  };
+
+//returns Wholesaler top 3 retailers on transactions level
+exports.getWholesalerTop3Retailers = async (req, res) => {
+    try{
+        const selectedMonth = req.body.selectedMonth; // Assuming the selected month is sent from the frontend
+        const year = new Date().getFullYear();
+    
+        const startOfMonth = new Date(year, selectedMonth - 1, 1);
+        const endOfMonth = new Date(year, selectedMonth, 0, 23, 59, 59);
+
+        let transactionsL2 = await Transaction.find({
+            sender: req.body.wholesalerId,
+            level: 2,
+            createdAt: {
+              $gte: startOfMonth,
+              $lte: endOfMonth
+            }
+          })
+          .populate({
+            path: 'recipient',
+            model: 'Retailer' || 'sub-Wholesaler', // Replace with the actual collection name
+            select: 'user',
+            populate: {
+              path: 'user',
+              model: 'User', // Replace with the actual User model name
+              select: 'firstName lastName role'
+            }
+          })
+          transactionsL2 = transactionsL2.filter((elem)=>{return elem.recipient !== null})
+          const retailerTransactions = {};
+        transactionsL2.forEach(transaction => {
+            const retailerId = transaction.recipient._id.toString();
+            if (!retailerTransactions[retailerId]) {
+                retailerTransactions[retailerId] = {
+                    retailer: transaction.recipient.user,
+                    totalAmount: 0
+                };
+            }
+            retailerTransactions[retailerId].totalAmount += transaction.transactionAmount.amount;
+        });
+
+        // Sort retailers by total transaction amount
+        const sortedRetailers = Object.values(retailerTransactions).sort((a, b) => b.totalAmount - a.totalAmount);
+
+        // Get the top 3 retailers
+        const top3Retailers = sortedRetailers.slice(0, 3);
+
+        res.send( top3Retailers );
+    }catch(error){
+        console.error(error.message);
+        res.status(500).json({ msg: "Une erreur s'est produite!" });
+    }
+}

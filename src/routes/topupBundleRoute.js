@@ -40,4 +40,9 @@ router.post(
   topupBundleController.getCurrentMonthTopUpBundleAmountRetailer
 );
 
+router.post(
+  "/history/retailer",
+  topupBundleController.getBundleHistoryRetailer
+);
+
 module.exports = router;

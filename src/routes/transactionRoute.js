@@ -49,5 +49,13 @@ router.post('/admin/topTransactions',  transactionController.getAdminTopTransact
 
 router.post('/admin/getSpecificAdminTransactions',  transactionController.getSpecificAdminTransactions);
 
+// ============== WHOLESALER ==============
+
+//desc: gets monthly wholesaler transactions
+router.post('/history/wholesaler/monthly',  transactionController.getMonthlyTransactionsbyWholesaler);
+
+//desc: gets wholesaler top 3 retailers on transactions level
+router.post('/wholesaler/topRetailers',  transactionController.getWholesalerTop3Retailers);
+
 
 module.exports = router;

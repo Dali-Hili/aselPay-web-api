@@ -250,6 +250,54 @@ exports.getTopupsWholesaler = async (req, res) => {
   }
 };
 
+exports.getDailyTopupsWholesaler = async (req, res) => {
+  try {
+    const retailers = await Retailer.find({ wholesaler: req.body.wholesalerId });
+
+    let retailerIds = retailers.map((retailer) => retailer._id);
+
+    let topupBundle = await TopupBundle.find({
+      retailer: { $in: retailerIds },
+      createdAt: {
+        $gte: new Date().setHours(0, 0, 0, 0), // Start of the day
+        $lte: new Date().setHours(23, 59, 59, 999) // End of the day
+      }
+    }).populate("bundle");
+
+    let topupLight = await TopupLight.find({
+      retailer: { $in: retailerIds },
+      createdAt: {
+        $gte: new Date().setHours(0, 0, 0, 0), // Start of the day
+        $lte: new Date().setHours(23, 59, 59, 999) // End of the day
+      }
+    });
+
+    // Calculate the total of topupBundle prices
+    let totalTopupBundle = topupBundle.reduce((total, bundle) => {
+      return total + bundle.bundle.price.amount;
+    }, 0);
+
+    // Calculate the total of topupLight reload amounts
+    let totalTopupLight = topupLight.reduce((total, light) => {
+      return total + light.reloadAmount.amount;
+    }, 0);
+
+    // Concatenate arrays and sort by date
+    let topups = topupBundle.concat(topupLight);
+    topups.sort(function (a, b) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    res.json({
+      totalTopupBundle: totalTopupBundle,
+      totalTopupLight: totalTopupLight
+    });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ msg: "An error occurred!" });
+  }
+};
+
 exports.getTopupsSubWholesaler = async (req, res) => {
   try {
     const subwholesaler = await subWholesaler.findOne({

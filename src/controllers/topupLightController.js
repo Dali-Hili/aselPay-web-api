@@ -392,3 +392,38 @@ exports.getCurrentMonthTopUpLightAmountRetailer = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.getLightHistoryRetailer = async (req, res) => {
+  try {
+    const topupLight = await TopupLight.find({ retailer: req.body.retailerId })
+      .populate({
+        path: "retailer",
+        populate: { path: "user" },
+      })
+      .populate("MVNO")
+      .select({
+        _id: 1,
+        MSISDN: 1,
+        createdAt: 1,
+        reloadAmount: 1,
+        "retailer._id": 1,
+        "retailer.user._id": 1,
+        "retailer.user.firstName": 1,
+        "retailer.user.lastName": 1,
+        "retailer.wholesaler": 1,
+        "MVNO._id": 1,
+        "MVNO.name": 1,
+      })
+      .lean();
+    topupLight.forEach((item) => {
+      item.topupType = "Light";
+    });
+    topupLight.sort(function (a, b) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    res.send(topupLight);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ msg: "Une erreur s'est produite!" });
+  }
+};

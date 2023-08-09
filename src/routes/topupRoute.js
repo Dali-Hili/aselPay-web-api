@@ -14,6 +14,11 @@ router.get('/history', auth, grantAccess(['admin','wholesaler','retailer','Super
 //desc: returns topup history (wholesaler)
 router.get('/history', switchRoutebyRole('wholesaler'), topupController.getTopupsWholesaler);
 
+
+//@route: GET topup/history
+//desc: returns daily topup history (wholesaler)
+router.post('/history/daily', topupController.getDailyTopupsWholesaler);
+
 //@route: GET topup/history
 //desc: returns topup history (wholesaler)
 router.get('/history/subWholesaler',auth, topupController.getTopupsSubWholesaler);
